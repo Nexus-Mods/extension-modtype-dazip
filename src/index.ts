@@ -1,9 +1,26 @@
 import * as Promise from 'bluebird';
 import { app as appIn, remote } from 'electron';
 import * as path from 'path';
-import { log, types, util } from 'vortex-api';
+import { log, types } from 'vortex-api';
 
 const app = appIn || remote.app;
+const replaceable = 'XXXX';
+const addInPath = path.join(app.getPath('documents'), 'BioWare', replaceable, 'AddIns')
+const settingsPath = path.join(app.getPath('documents'), 'BioWare', replaceable, 'Settings');
+
+// Dragon age game information.
+const DA_GAMES = {
+  DragonAge1: {
+    id: 'dragonage',
+    addIns: addInPath.replace(replaceable, 'Dragon Age'),
+    settings: settingsPath.replace(replaceable, 'Dragon Age'),
+},
+  DragonAge2: {
+    id: 'dragonage2',
+    addIns: addInPath.replace(replaceable, 'Dragon Age II'),
+    settings: settingsPath.replace(replaceable, 'Dragon Age II'),
+  },
+}
 
 function testDazip(instructions: types.IInstruction[]) {
   // we can't (currently) now the files are inside a dazip, the outer installer
@@ -35,7 +52,7 @@ function installOuter(files: string[],
 }
 
 function isDragonAge(gameId: string): boolean {
-  return [ 'dragonage', 'dragonage2' ].indexOf(gameId) !== -1;
+  return [ DA_GAMES.DragonAge1.id, DA_GAMES.DragonAge2.id ].indexOf(gameId) !== -1;
 }
 
 function testIsSettings(): Promise<boolean> {
@@ -45,11 +62,19 @@ function testIsSettings(): Promise<boolean> {
 
 function init(context: types.IExtensionContext) {
   const getPath = (game: types.IGame) => {
-    return path.join(app.getPath('documents'), 'BioWare', 'Dragon Age', 'AddIns');
+    if (game.id === DA_GAMES.DragonAge1.id) {
+      return DA_GAMES.DragonAge1.addIns;
+    } else if (game.id == DA_GAMES.DragonAge2.id) {
+      return DA_GAMES.DragonAge2.addIns;
+    }
   };
 
   const getSettingsPath = (game: types.IGame) => {
-    return path.join(app.getPath('documents'), 'BioWare', 'Dragon Age', 'Settings');
+    if (game.id === DA_GAMES.DragonAge1.id) {
+      return DA_GAMES.DragonAge1.settings;
+    } else if (game.id === DA_GAMES.DragonAge2.id) {
+      return DA_GAMES.DragonAge2.settings;
+    }
   };
 
   context.registerModType('dazip', 25, isDragonAge, getPath, testDazip);
