@@ -5,19 +5,18 @@ import { log, types } from 'vortex-api';
 
 const app = appIn || remote.app;
 const replaceable = 'XXXX';
-const addInPath = path.join(app.getPath('documents'), 'BioWare', replaceable, 'AddIns')
 const settingsPath = path.join(app.getPath('documents'), 'BioWare', replaceable, 'Settings');
 
 // Dragon age game information.
 const DA_GAMES = {
   DragonAge1: {
     id: 'dragonage',
-    addIns: addInPath.replace(replaceable, 'Dragon Age'),
+    modPath: path.join(app.getPath('documents'), 'BioWare', 'Dragon Age', 'AddIns'),
     settings: settingsPath.replace(replaceable, 'Dragon Age'),
 },
   DragonAge2: {
     id: 'dragonage2',
-    addIns: addInPath.replace(replaceable, 'Dragon Age II'),
+    modPath: path.join(app.getPath('documents'), 'BioWare', 'Dragon Age 2', 'packages', 'core', 'override'),
     settings: settingsPath.replace(replaceable, 'Dragon Age II'),
   },
 }
@@ -63,9 +62,9 @@ function testIsSettings(): Promise<boolean> {
 function init(context: types.IExtensionContext) {
   const getPath = (game: types.IGame) => {
     if (game.id === DA_GAMES.DragonAge1.id) {
-      return DA_GAMES.DragonAge1.addIns;
+      return DA_GAMES.DragonAge1.modPath;
     } else if (game.id == DA_GAMES.DragonAge2.id) {
-      return DA_GAMES.DragonAge2.addIns;
+      return DA_GAMES.DragonAge2.modPath;
     }
   };
 
