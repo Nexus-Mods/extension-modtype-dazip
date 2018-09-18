@@ -4,20 +4,19 @@ import * as path from 'path';
 import { log, types } from 'vortex-api';
 
 const app = appIn || remote.app;
-const replaceable = 'XXXX';
-const settingsPath = path.join(app.getPath('documents'), 'BioWare', replaceable, 'Settings');
+const settingsPath = (game: string) => path.join(app.getPath('documents'), 'BioWare', game, 'Settings');
 
 // Dragon age game information.
 const DA_GAMES = {
   DragonAge1: {
     id: 'dragonage',
     modPath: path.join(app.getPath('documents'), 'BioWare', 'Dragon Age', 'AddIns'),
-    settings: settingsPath.replace(replaceable, 'Dragon Age'),
+    settings: settingsPath('Dragon Age'),
 },
   DragonAge2: {
     id: 'dragonage2',
     modPath: path.join(app.getPath('documents'), 'BioWare', 'Dragon Age 2', 'packages', 'core', 'override'),
-    settings: settingsPath.replace(replaceable, 'Dragon Age II'),
+    settings: settingsPath('Dragon Age II'),
   },
 }
 
