@@ -6,16 +6,18 @@ import { log, types } from 'vortex-api';
 const app = appIn || remote.app;
 const settingsPath = (game: string) => path.join(app.getPath('documents'), 'BioWare', game, 'Settings');
 
+const DA_CONTENTS_FOLDER = 'Contents\\';
+
 // Dragon age game information.
 const DA_GAMES = {
   DragonAge1: {
     id: 'dragonage',
-    modPath: path.join(app.getPath('documents'), 'BioWare', 'Dragon Age', 'AddIns'),
+    modPath: path.join(app.getPath('documents'), 'BioWare', 'Dragon Age'),
     settings: settingsPath('Dragon Age'),
 },
   DragonAge2: {
     id: 'dragonage2',
-    modPath: path.join(app.getPath('documents'), 'BioWare', 'Dragon Age 2', 'packages', 'core', 'override'),
+    modPath: path.join(app.getPath('documents'), 'BioWare', 'Dragon Age 2'/*, 'packages', 'core', 'override'*/),
     settings: settingsPath('Dragon Age II'),
   },
 }
@@ -34,6 +36,15 @@ function testSupportedOuter(files: string[]) {
   });
 }
 
+function testSupportedInner(files: string[], gameId: string) {
+  const supported = isDragonAge(gameId) 
+    && (files.find(file => file.indexOf(DA_CONTENTS_FOLDER) === 0) !== undefined)
+  return Promise.resolve({
+    supported,
+    requiredFiles: [],
+  });
+}
+
 function installOuter(files: string[],
                       destinationPath: string,
                       gameId: string,
@@ -47,6 +58,39 @@ function installOuter(files: string[],
                               submoduleType: 'dazip',
                             }));
   return Promise.resolve({ instructions });
+}
+
+// Dragon Age 2 does not have an official creation kit and any dazip
+//  archives targeted at DA2 are created using DA:O's creation kit.
+//  Reason why it's safe to assume that both games have the same
+//  folder structure.
+function installInner(files: string[],
+  destinationPath: string,
+  gameId: string,
+  progressDelegate): Promise<types.IInstallResult> {
+    const result: types.IInstallResult = {
+      instructions: []
+    };
+    
+    // Go through each file and remove the contents folder.
+    files.forEach(file => {
+      let newPath = file;
+      if (file.indexOf(DA_CONTENTS_FOLDER) !== -1) {
+        newPath = file.replace(DA_CONTENTS_FOLDER + '\\', '');
+      }
+
+      // Ignore any folders as the install manager will
+      //  ensure these are created when transferring files.
+      if (path.extname(path.basename(newPath)) !== '') {
+        result.instructions.push({
+          type: 'copy',
+          source: file,
+          destination: newPath,
+        })
+      }
+    })
+
+  return Promise.resolve(result);
 }
 
 function isDragonAge(gameId: string): boolean {
@@ -78,8 +122,7 @@ function init(context: types.IExtensionContext) {
   context.registerModType('dazip', 25, isDragonAge, getPath, testDazip);
   context.registerModType('dragonage-settings', 999, isDragonAge, getSettingsPath, testIsSettings);
   context.registerInstaller('dazipOuter', 15, testSupportedOuter, installOuter);
-  // the dazip itself is installed like a "regular" fomod, but it will have the dazip
-  // modtype set from dazipOuter
+  context.registerInstaller('dazipInner', 15, testSupportedInner, installInner);
 
   return true;
 }
