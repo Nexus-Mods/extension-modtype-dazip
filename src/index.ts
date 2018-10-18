@@ -6,7 +6,7 @@ import { log, types } from 'vortex-api';
 const app = appIn || remote.app;
 const settingsPath = (game: string) => path.join(app.getPath('documents'), 'BioWare', game, 'Settings');
 
-const DA_CONTENTS_FOLDER = 'Contents\\';
+const DA_CONTENTS_FOLDER = 'contents\\';
 
 // Dragon age game information.
 const DA_GAMES = {
@@ -38,7 +38,7 @@ function testSupportedOuter(files: string[]) {
 
 function testSupportedInner(files: string[], gameId: string) {
   const supported = isDragonAge(gameId) 
-    && (files.find(file => file.indexOf(DA_CONTENTS_FOLDER) === 0) !== undefined)
+    && (files.find(file => file.toLowerCase().indexOf(DA_CONTENTS_FOLDER) === 0) !== undefined)
   return Promise.resolve({
     supported,
     requiredFiles: [],
@@ -74,9 +74,9 @@ function installInner(files: string[],
     
     // Go through each file and remove the contents folder.
     files.forEach(file => {
-      let newPath = file;
-      if (file.indexOf(DA_CONTENTS_FOLDER) !== -1) {
-        newPath = file.replace(DA_CONTENTS_FOLDER + '\\', '');
+      let newPath = file.toLowerCase();
+      if (newPath.indexOf(DA_CONTENTS_FOLDER) !== -1) {
+        newPath = newPath.replace(DA_CONTENTS_FOLDER, '');
       }
 
       // Ignore any folders as the install manager will
