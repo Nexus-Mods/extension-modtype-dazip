@@ -28,7 +28,7 @@ function testDazip(instructions: types.IInstruction[]) {
 }
 
 function testSupportedOuter(files: string[]) {
-  const dazips = files.filter(file => path.extname(file) === '.dazip');
+  const dazips = files.filter(file => !file.endsWith(path.sep) && path.extname(file) === '.dazip');
   return Promise.resolve({
     supported: dazips.length > 0,
     requiredFiles: dazips,
@@ -50,7 +50,7 @@ function installOuter(files: string[],
                       destinationPath: string,
                       gameId: string,
                       progressDelegate): Promise<types.IInstallResult> {
-  const dazips = files.filter(file => path.extname(file) === '.dazip');
+  const dazips = files.filter(file => !file.endsWith(path.sep) && path.extname(file) === '.dazip');
   log('debug', 'install nested', dazips);
   const instructions = dazips.map((dazip: string): types.IInstruction => ({
                               type: 'submodule',
