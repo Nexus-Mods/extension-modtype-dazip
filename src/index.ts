@@ -5,7 +5,6 @@ import { log, types } from 'vortex-api';
 
 const app = appIn || remote.app;
 
-const DA_CONTENTS_FOLDER = 'contents\\';
 const DA_MODULE_ERF_SUFFIX = '_module.erf';
 
 // Dragon age game information.
@@ -35,13 +34,39 @@ function testSupportedOuter(files: string[]) {
   });
 }
 
+function shortestPath(lhs: string, rhs: string) {
+  return lhs.split(path.sep).length - rhs.split(path.sep).length;
+}
+
 function testSupportedInner(files: string[], gameId: string) {
-  const supported = isDragonAge(gameId)
-    && (files.find(file => file.toLowerCase().indexOf(DA_CONTENTS_FOLDER) !== -1) !== undefined)
-    && (files.find(file =>
-          path.basename(file.toLowerCase()).indexOf(DA_MODULE_ERF_SUFFIX) !== -1) !== undefined);
+  const unsupported = () => Promise.resolve({ supported: false, requiredFiles: [] });
+
+  if (!isDragonAge(gameId)) {
+    return unsupported();
+  }
+
+  if (files.find(file => file.toLowerCase().split(path.sep).includes('contents')) === undefined) {
+    return unsupported();
+  }
+
+  const manifests = files.filter(iter => path.basename(iter.toLowerCase()) === 'manifest.xml');
+  if (manifests.length === 0) {
+    return unsupported();
+  }
+
+  // if there are multiple manifests we only consider the one with the shortest directory tree
+  const shortest = (manifests.sort(shortestPath))[0];
+  const basePath = path.dirname(shortest);
+
+  if (basePath !== '.') {
+    const extraFiles = files.filter(iter => !iter.startsWith(basePath));
+    if (extraFiles.length !== 0) {
+      return unsupported();
+    }
+  }
+
   return Promise.resolve({
-    supported,
+    supported: true,
     requiredFiles: [],
   });
 }
@@ -70,34 +95,64 @@ function installInner(files: string[],
                       gameId: string,
                       progressDelegate): Promise<types.IInstallResult> {
   const result: types.IInstallResult = {
-    instructions: [],
+    instructions: [{
+      type: 'setmodtype',
+      value: 'dazip',
+    }],
   };
 
-  let modName = files.find(file => path.basename(file).indexOf(DA_MODULE_ERF_SUFFIX) !== -1);
-  modName = path.basename(modName).replace(DA_MODULE_ERF_SUFFIX, '');
+  const manifests = files.filter(iter => path.basename(iter.toLowerCase()) === 'manifest.xml');
+  const shortest = (manifests.sort(shortestPath))[0];
+  const basePath = path.dirname(shortest);
+
+  let modName: string;
+  const sep = `${path.sep}${path.sep}`;
+  const addinsPathRE = new RegExp(['contents', 'addins', `[^${sep}]+`].join(sep) + sep, 'i');
+  const addinsPath = files.find(filePath => addinsPathRE.test(filePath));
+  if (addinsPath !== undefined) {
+    const segments = addinsPath.split(path.sep);
+    const addinsIdx = segments.findIndex(seg => seg.toLowerCase() === 'addins');
+    modName = segments[addinsIdx + 1];
+  } else {
+    const moduleERF = files.find(file => path.basename(file).includes(DA_MODULE_ERF_SUFFIX));
+    if (moduleERF !== undefined) {
+      modName = path.basename(moduleERF).replace(DA_MODULE_ERF_SUFFIX, '');
+    }
+  }
 
   // Go through each file and remove the contents folder.
-  files.forEach(file => {
-    let newPath = file.toLowerCase();
-    if (newPath.indexOf(DA_CONTENTS_FOLDER) !== -1) {
-      newPath = newPath.replace(DA_CONTENTS_FOLDER, '');
+  files.forEach(filePath => {
+    if (filePath.endsWith(path.sep)) {
+      // ignore directories
+      return;
     }
 
-    // Move the manifest file from the archive's root to avoid
-    //  mod conflicts.
-    if (newPath === 'manifest.xml') {
-      newPath = newPath.replace(newPath, path.join('AddIns', modName, newPath));
-    }
-
-    // Ignore any folders as the install manager will
-    //  ensure these are created when transferring files.
-    if (path.extname(path.basename(newPath)) !== '') {
+    if (filePath === shortest) {
       result.instructions.push({
         type: 'copy',
-        source: file,
-        destination: newPath,
+        source: filePath,
+        destination: (modName !== undefined)
+          ? path.join('addins', modName, shortest)
+          : filePath,
       });
+      return;
     }
+
+    // we already checked that all files are inside basePath in the test function so this
+    // second check should be unnecessary
+    if ((basePath !== '.') && (filePath.toLowerCase().startsWith(basePath.toLowerCase()))) {
+      filePath = filePath.slice(basePath.length + 1);
+    }
+    let filePathSplit = filePath.split(path.sep);
+    if (filePathSplit[0].toLowerCase() === 'contents') {
+      filePathSplit = filePathSplit.slice(1);
+    }
+
+    result.instructions.push({
+      type: 'copy',
+      source: filePath,
+      destination: path.join(...filePathSplit),
+    });
   });
 
   return Promise.resolve(result);
@@ -116,7 +171,11 @@ function init(context: types.IExtensionContext) {
     }
   };
 
-  context.registerModType('dazip', 25, isDragonAge, getPath, testDazip);
+  // incorrectly named mod type. we use this mod type to denote addin-type mods
+  // that have to be registered in the Addins.xml file
+  context.registerModType('dazip', 25, isDragonAge, getPath, testDazip, {
+    name: 'Dragon Age AddIn',
+  });
   context.registerInstaller('dazipOuter', 15, testSupportedOuter, installOuter);
   context.registerInstaller('dazipInner', 15, testSupportedInner, installInner);
 
