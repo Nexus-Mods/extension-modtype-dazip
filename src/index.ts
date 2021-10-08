@@ -1,9 +1,6 @@
 import Promise from 'bluebird';
-import { app as appIn, remote } from 'electron';
 import * as path from 'path';
-import { log, types } from 'vortex-api';
-
-const app = appIn || remote.app;
+import { log, types, util } from 'vortex-api';
 
 const DA_MODULE_ERF_SUFFIX = '_module.erf';
 
@@ -11,11 +8,11 @@ const DA_MODULE_ERF_SUFFIX = '_module.erf';
 const DA_GAMES = {
   DragonAge1: {
     id: 'dragonage',
-    modPath: path.join(app.getPath('documents'), 'BioWare', 'Dragon Age'),
+    modPath: path.join(util.getVortexPath('documents'), 'BioWare', 'Dragon Age'),
   },
   DragonAge2: {
     id: 'dragonage2',
-    modPath: path.join(app.getPath('documents'), 'BioWare',
+    modPath: path.join(util.getVortexPath('documents'), 'BioWare',
                        'Dragon Age 2'/*, 'packages', 'core', 'override'*/),
   },
 };
