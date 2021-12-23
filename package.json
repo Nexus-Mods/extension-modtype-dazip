@@ -1,6 +1,6 @@
 {
   "name": "modtype-dazip",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Support for dazip (Dragon Age) mods",
   "main": "./out/index.js",
   "repository": "",

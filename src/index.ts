@@ -1,21 +1,12 @@
 import Promise from 'bluebird';
 import * as path from 'path';
-import { log, types, util } from 'vortex-api';
+import { log, types, selectors, util } from 'vortex-api';
+
+import { migrate100 } from './migrations';
+
+import { DA_GAMES } from './constants';
 
 const DA_MODULE_ERF_SUFFIX = '_module.erf';
-
-// Dragon age game information.
-const DA_GAMES = {
-  DragonAge1: {
-    id: 'dragonage',
-    modPath: path.join(util.getVortexPath('documents'), 'BioWare', 'Dragon Age'),
-  },
-  DragonAge2: {
-    id: 'dragonage2',
-    modPath: path.join(util.getVortexPath('documents'), 'BioWare',
-                       'Dragon Age 2'/*, 'packages', 'core', 'override'*/),
-  },
-};
 
 function testDazip(instructions: types.IInstruction[]) {
   // we can't (currently) know the files that are inside a dazip, the outer installer
@@ -162,9 +153,13 @@ function isDragonAge(gameId: string): boolean {
 function init(context: types.IExtensionContext) {
   const getPath = (game: types.IGame) => {
     if (game.id === DA_GAMES.DragonAge1.id) {
-      return DA_GAMES.DragonAge1.modPath;
+      return DA_GAMES.DragonAge1.getAddinsFolder
+        ? DA_GAMES.DragonAge1.getAddinsFolder(context.api)
+        : DA_GAMES.DragonAge1.modPath;
     } else if (game.id === DA_GAMES.DragonAge2.id) {
-      return DA_GAMES.DragonAge2.modPath;
+      return DA_GAMES.DragonAge2.getAddinsFolder
+        ? DA_GAMES.DragonAge2.getAddinsFolder(context.api)
+        : DA_GAMES.DragonAge2.modPath;
     }
   };
 
@@ -175,6 +170,8 @@ function init(context: types.IExtensionContext) {
   });
   context.registerInstaller('dazipOuter', 15, testSupportedOuter, installOuter);
   context.registerInstaller('dazipInner', 15, testSupportedInner, installInner);
+
+  context.registerMigration((old: string) => migrate100(context, old) as any);
 
   return true;
 }
